@@ -1,20 +1,32 @@
-name: Deploy (insecure)
+name: Deploy
 
 on:
   push:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
-  deploy:
+  validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - name: Announce
-        run: echo "Deploying PR ${{ github.event.pull_request.title }}"
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: echo "Validating $PR_TITLE"
 
+  deploy:
+    needs: validate
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
       - name: Fake deploy
+        env:
+          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
         run: |
-          DEPLOY_TOKEN=hunter2-not-a-real-token
-          echo "Using token $DEPLOY_TOKEN to deploy"
+          echo "Token length: ${#DEPLOY_TOKEN}"
+          echo "Deploying..."
