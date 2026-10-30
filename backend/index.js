@@ -3,7 +3,6 @@ const { Pool } = require('pg');
 const cors = require('cors');
 const { validateNoteText, parseCorsOrigin } = require('./lib.js')
 
-const unusedVariable = 'this will fail lint';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
