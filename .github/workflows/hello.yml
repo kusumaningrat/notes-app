@@ -1,0 +1,62 @@
+name: Hello Workflow
+
+run-name: Hello run by @${{ github.actor }}
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      greeting:
+        description: "Who should we greet?"
+        required: true
+        default: "PeternakClouds"
+        type: string
+      shout:
+        description: "Print the greeting in uppercase?"
+        type: boolean
+        default: false
+
+env:
+  APP_NAME: notes-app
+
+jobs:
+  hello:
+    name: Say hello
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Show event information
+        run: |
+          echo "App:      $APP_NAME"
+          echo "Event:    ${{ github.event_name }}"
+          echo "Branch:   ${{ github.ref_name }}"
+          echo "Commit:   ${GITHUB_SHA::7}"
+          echo "Actor:    ${{ github.actor }}"
+          echo "Runner:   ${{ runner.os }}"
+
+      - name: Greet (manual runs only)
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GREETING: ${{ inputs.greeting }}
+          SHOUT: ${{ inputs.shout }}
+        run: |
+          if [ "$SHOUT" = "true" ]; then
+            echo "HELLO, ${GREETING^^}!"
+          else
+            echo "Hello, $GREETING!"
+          fi
+
+      - name: List the project files
+        run: ls -la
+
+      - name: Write a job summary
+        run: |
+          {
+            echo "## Hello workflow"
+            echo "- Triggered by: \`${{ github.event_name }}\`"
+            echo "- Commit: \`${GITHUB_SHA::7}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
