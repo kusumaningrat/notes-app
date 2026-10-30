@@ -1,6 +1,7 @@
 const express = require('express');
 const { Pool } = require('pg');
 const cors = require('cors');
+const { validateNoteText, parseCorsOrigin } = require('./lib.js')
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -12,9 +13,8 @@ if (!DATABASE_URL) {
 }
 
 // Parse CORS origins from environment variable
-const corsOrigins = process.env.CORS_ORIGIN
-  ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
-  : ['*'];
+const corsOrigins = parseCorsOrigin(process.env.CORS_ORIGIN);
+
 
 app.use(cors({
   origin: corsOrigins,
@@ -80,16 +80,16 @@ app.get('/api/notes', async (req, res) => {
 
 // POST /api/notes - Create a new note
 app.post('/api/notes', async (req, res) => {
-  const { text } = req.body;
+  const validation = validateNoteText(req.body.text);
 
-  if (!text || text.trim() === '') {
-    return res.status(400).json({ error: 'Note text cannot be blank' });
+  if (!validation.valid) {
+    return res.status(400).json({ error: validation.error });
   }
 
   try {
     const result = await pool.query(
       'INSERT INTO notes (text) VALUES ($1) RETURNING id, text, created_at',
-      [text.trim()]
+      [validation.value]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -97,6 +97,7 @@ app.post('/api/notes', async (req, res) => {
     res.status(500).json({ error: 'Failed to create note' });
   }
 });
+
 
 // DELETE /api/notes/:id - Delete a note
 app.delete('/api/notes/:id', async (req, res) => {
