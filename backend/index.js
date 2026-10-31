@@ -3,6 +3,7 @@ const { Pool } = require('pg');
 const cors = require('cors');
 const { validateNoteText, parseCorsOrigin } = require('./lib.js')
 
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 const DATABASE_URL = process.env.DATABASE_URL;
