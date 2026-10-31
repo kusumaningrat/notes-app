@@ -1,0 +1,50 @@
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ vars.APP_URL }}
+    env:
+      COMMIT_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+    steps:
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: Set image tag
+        id: tag
+        run: echo "value=sha-${COMMIT_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy
+        run: ssh deploy@${{ secrets.SERVER_HOST }} "${{ steps.tag.outputs.value }}"
+
+      - name: Verify public URL
+        run: |
+          for i in $(seq 1 12); do
+            if curl -fsS --max-time 5 "${{ vars.APP_URL }}" >/dev/null; then
+              echo "Healthy"
+              exit 0
+            fi
+            echo "Attempt $i failed; retrying in 5s"
+            sleep 5
+          done
+          echo "::error::Public URL failed"; exit 1
